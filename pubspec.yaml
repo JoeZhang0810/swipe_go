@@ -1,0 +1,26 @@
+name: swipe_go
+description: 划咯 - SwipeGo 相册清理助手
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  photo_manager: ^3.0.0
+  flutter_riverpod: ^2.4.0
+  intl: ^0.18.0
+  url_launcher: ^6.1.0
+  shared_preferences: ^2.2.0
+  video_player: ^2.8.0
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
