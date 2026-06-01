@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../models/media_item.dart';
 import '../providers/app_providers.dart';
 import '../widgets/delete_confirmation_sheet.dart';
+import '../widgets/media_detail_sheet.dart';
 
 class BrowseScreen extends ConsumerStatefulWidget {
   const BrowseScreen({super.key});
@@ -43,9 +44,7 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
           includePhotos: settings.showPhotos,
           includeVideos: settings.showVideos,
         );
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() { _isLoading = false; });
   }
 
   Future<VideoPlayerController> _getVideoController(MediaItem item) async {
@@ -78,11 +77,9 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
 
   void _goToPrevious() {
     final currentIndex = ref.read(currentIndexProvider);
-    // 第一张无效
     if (currentIndex > 0) {
       ref.read(currentIndexProvider.notifier).state = currentIndex - 1;
       _pauseCurrentVideo();
-      // 更新已查看统计
       ref.read(statsProvider.notifier).incrementViewed();
     }
   }
@@ -93,10 +90,8 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     if (currentIndex < mediaList.length - 1) {
       ref.read(currentIndexProvider.notifier).state = currentIndex + 1;
       _pauseCurrentVideo();
-      // 更新已查看统计
       ref.read(statsProvider.notifier).incrementViewed();
     } else {
-      // 最后一张左滑 → 直接弹出删除确认弹层
       _showDeleteConfirmation();
     }
   }
@@ -130,75 +125,6 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     }
   }
 
-  void _showMediaDetails(MediaItem item) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.black.withOpacity(0.9),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '详细信息',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildDetailRow('文件名', item.title),
-            _buildDetailRow('类型', item.isVideo ? '视频' : '图片'),
-            _buildDetailRow('尺寸', '${item.width} x ${item.height}'),
-            _buildDetailRow(
-              '创建时间',
-              item.createDateTime.toString().substring(0, 19),
-            ),
-            if (item.relativePath != null)
-              _buildDetailRow('路径', item.relativePath!),
-            if (item.latitude != null && item.longitude != null) ...[
-              _buildDetailRow('纬度', item.latitude!),
-              _buildDetailRow('经度', item.longitude!),
-            ],
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final mediaList = ref.watch(mediaListProvider);
@@ -208,7 +134,7 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
 
     if (_isLoading) {
       return const Scaffold(
-        backgroundColor: Color(0xFF0A0A1A),
+        backgroundColor: Colors.black,
         body: Center(
           child: CircularProgressIndicator(color: Colors.white),
         ),
@@ -217,49 +143,43 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
 
     if (mediaList.isEmpty) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0A0A1A),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: const Center(
-          child: Text(
-            '暂无内容',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('暂无内容',
+                  style: TextStyle(color: Colors.white, fontSize: 16)),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('返回', style: TextStyle(color: Colors.white70)),
+              ),
+            ],
           ),
         ),
       );
     }
 
     final currentItem = mediaList[currentIndex];
-    final progress = (currentIndex + 1) / mediaList.length;
+    final totalCount = mediaList.length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A1A),
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 主要内容区域 - 手势控制
+          // 主要内容 - 手势区域
           GestureDetector(
             onHorizontalDragUpdate: (details) {
-              setState(() {
-                _swipeOffsetX += details.delta.dx;
-              });
+              setState(() { _swipeOffsetX += details.delta.dx; });
             },
             onHorizontalDragEnd: (details) {
               if (_swipeOffsetX > 50) {
-                // 右滑 → 上一条（第一张无效）
                 _goToPrevious();
               } else if (_swipeOffsetX < -50) {
-                // 左滑 → 下一条
                 _goToNext();
               }
-              setState(() {
-                _swipeOffsetX = 0;
-              });
+              setState(() { _swipeOffsetX = 0; });
             },
             onVerticalDragUpdate: (details) {
               setState(() {
@@ -269,7 +189,6 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
             },
             onVerticalDragEnd: (details) {
               if (_swipeOffsetY < -100) {
-                // 上滑 → 标记删除 + 切换下一条
                 _markForDeleteAndNext();
               }
               setState(() {
@@ -285,217 +204,190 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
             ),
           ),
 
-          // 顶部红色删除提示
+          // 上划删除红色渐变提示
           if (_showDeleteHint)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
               child: Container(
-                height: MediaQuery.of(context).padding.top + 60,
-                decoration: BoxDecoration(
+                height: MediaQuery.of(context).padding.top + 80,
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const Color(0xFFEF4444).withOpacity(0.8),
-                      const Color(0xFFEF4444).withOpacity(0.0),
+                      Color(0x80C82828),
+                      Colors.transparent,
                     ],
                   ),
                 ),
                 child: SafeArea(
                   child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.delete,
-                          color: Colors.white.withOpacity(0.9),
-                          size: 32,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '↑ 上划删除',
+                        style: TextStyle(
+                          color: Colors.red.shade300,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '上滑删除',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
 
-          // 顶部进度条和导航
+          // 顶部分段进度条 + 删除计数
           Positioned(
-            top: MediaQuery.of(context).padding.top,
-            left: 0,
-            right: 0,
+            top: MediaQuery.of(context).padding.top + 12,
+            left: 16,
+            right: 16,
             child: Column(
               children: [
-                // 白色渐变进度条
-                Container(
-                  height: 2,
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(1),
-                    color: Colors.grey[800],
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: progress,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(1),
-                        gradient: const LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [
-                            Color(0xF2FFFFFF), // 0.95 opacity
-                            Color(0x66FFFFFF), // 0.4 opacity
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // 返回按钮和删除计数
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      Text(
-                        '${currentIndex + 1} / ${mediaList.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                      // 删除计数按钮 → 弹出删除确认弹层
+                // 分段进度条
+                _buildSegmentedProgress(totalCount, currentIndex),
+                const SizedBox(height: 12),
+                // 删除计数徽章 (右对齐)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (markedCount > 0)
                       GestureDetector(
-                        onTap: markedCount > 0 ? _showDeleteConfirmation : null,
+                        onTap: _showDeleteConfirmation,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: markedCount > 0
-                                ? const Color(0xFFEF4444).withOpacity(0.8)
-                                : Colors.grey[800],
+                            color: const Color(0xD9DC3C3C),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
-                                Icons.delete_outline,
-                                color: Colors.white,
-                                size: 16,
-                              ),
+                              Icon(Icons.delete_outline,
+                                  color: Colors.white, size: 10),
                               const SizedBox(width: 4),
                               Text(
                                 '$markedCount',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
               ],
             ),
           ),
 
-          // 底部操作按钮
+          // 左右滑动提示箭头
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: MediaQuery.of(context).padding.bottom + 16,
-            child: SafeArea(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // 详情按钮 - 白色渐变
-                  GestureDetector(
-                    onTap: () => _showMediaDetails(currentItem),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xF2FFFFFF), // 0.95 opacity
-                            Color(0x66FFFFFF), // 0.4 opacity
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: Color(0xFF0A0A1A),
-                            size: 20,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            '详情',
-                            style: TextStyle(
-                              color: Color(0xFF0A0A1A),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+            top: 0,
+            bottom: 80,
+            left: 10,
+            child: Center(
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.chevron_left,
+                    color: Colors.white38, size: 18),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            bottom: 80,
+            right: 10,
+            child: Center(
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.chevron_right,
+                    color: Colors.white38, size: 18),
               ),
             ),
           ),
 
-          // 左右滑动提示 - 第一张时显示左滑提示
-          if (currentIndex == 0)
-            Positioned(
-              left: 16,
-              top: MediaQuery.of(context).size.height / 2 - 20,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.chevron_left,
-                  color: Colors.white54,
-                  size: 24,
+          // 底部信息按钮 (圆形，仅图标)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: MediaQuery.of(context).padding.bottom + 16,
+            child: Center(
+              child: GestureDetector(
+                onTap: () => showMediaDetailSheet(context, currentItem),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.15),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.info_outline,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
                 ),
               ),
             ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSegmentedProgress(int total, int current) {
+    return Row(
+      children: List.generate(total, (i) {
+        final isDone = i < current;
+        final isCurrent = i == current;
+        return Expanded(
+          child: Container(
+            height: 3,
+            margin: const EdgeInsets.symmetric(horizontal: 1.5),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(2),
+              color: isDone
+                  ? Colors.white.withOpacity(0.8)
+                  : Colors.white.withOpacity(0.25),
+            ),
+            child: isCurrent
+                ? Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: 0.4,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(2),
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+        );
+      }),
     );
   }
 
@@ -538,7 +430,6 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
                   aspectRatio: controller.value.aspectRatio,
                   child: VideoPlayer(controller),
                 ),
-                // 播放按钮
                 if (!isPlaying)
                   GestureDetector(
                     onTap: () => _togglePlay(item),
@@ -549,20 +440,14 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
                         color: Colors.black.withOpacity(0.6),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                        size: 48,
-                      ),
+                      child: const Icon(Icons.play_arrow,
+                          color: Colors.white, size: 48),
                     ),
                   ),
-                // 点击视频区域暂停
                 if (isPlaying)
                   GestureDetector(
                     onTap: () => _togglePlay(item),
-                    child: Container(
-                      color: Colors.transparent,
-                    ),
+                    child: Container(color: Colors.transparent),
                   ),
               ],
             );
