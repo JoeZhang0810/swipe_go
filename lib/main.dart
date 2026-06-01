@@ -13,12 +13,12 @@ class SwipeGoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '划咯 SwipeGo',
+      title: 'SwipeGo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0A0A1A),
+        scaffoldBackgroundColor: const Color(0xFF101010),
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.white,
           brightness: Brightness.dark,
