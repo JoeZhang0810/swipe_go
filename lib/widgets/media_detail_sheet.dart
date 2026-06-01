@@ -232,7 +232,7 @@ class _MediaDetailSheetState extends State<MediaDetailSheet> {
             bottom: 6,
             right: 8,
             child: Text(
-              '${widget.item.latitude?.toStringAsFixed(4)}, ${widget.item.longitude?.toStringAsFixed(4)}',
+              '${widget.item.latitude ?? ''}, ${widget.item.longitude ?? ''}',
               style: TextStyle(
                 fontSize: 10,
                 color: Colors.white.withOpacity(0.6),
